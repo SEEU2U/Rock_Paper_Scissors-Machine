@@ -35,7 +35,7 @@ rightHand_wins = 0
 # 이전에 승리한 시간을 기록
 win_time = time.time()
 
-# 승리 제한 시간을 3초로 만듦
+# 승리 판정 제한 시간을 3초로 만듦
 win_limit_sec = 3
 
 while cap.isOpened():
@@ -59,10 +59,10 @@ while cap.isOpened():
                 joint[j] = [lm.x, lm.y, lm.z]
 
             # 조인트의 각도 계산
-            v1 = joint[[0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19], :]  # Parent joint
-            v2 = joint[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], :]  # Child joint
+            v1 = joint[[0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19], :]  # 부모 조인트
+            v2 = joint[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], :]  # 자식 조인트
             v = v2 - v1  # [20,3]
-            # Normalize v
+            # Normalize v 정규화
             v = v / np.linalg.norm(v, axis=1)[:, np.newaxis]
 
             # 점의 각도계산
@@ -70,7 +70,7 @@ while cap.isOpened():
                                          v[[0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 16, 17, 18], :],
                                          v[[1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19], :]))  # [15,]
 
-            angle = np.degrees(angle)  # Convert radian to degree
+            angle = np.degrees(angle)  # radian을 degree로 변환시킴
 
             # 제스쳐 추론
             data = np.array([angle], dtype=np.float32)
@@ -117,8 +117,28 @@ while cap.isOpened():
                         # 승리 제한 시간 이후 승리한 경우에 이긴 횟수 증가
                         if rps_result[winner]['org'][0] < img.shape[1] // 2:
                             leftHand_wins += 1
+                            if leftHand_wins == 5:
+                                cv2.putText(img, text='Finish', org=(int(img.shape[1] / 2), 50),
+                                            fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 0, 255), thickness=3)
+                                cv2.putText(img, text='Winner Left', org=(int(img.shape[1] / 2), 100),
+                                            fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 255, 0), thickness=3)
+                                cv2.imshow('Game', img)
+                                cv2.waitKey(5000)    # 5초 후 게임을 종료
+                                cap.release()
+                                cv2.destroyAllWindows()
+                                break
                         else:
                             rightHand_wins += 1
+                            if rightHand_wins == 5:
+                                cv2.putText(img, text='Finish', org=(int(img.shape[1] / 2), 50),
+                                            fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 0, 255), thickness=3)
+                                cv2.putText(img, text='Winner Right', org=(int(img.shape[1] / 2), 100),
+                                            fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 255, 0), thickness=3)
+                                cv2.imshow('Game', img)
+                                cv2.waitKey(5000)  # 5초 후 게임을 종료
+                                cap.release()
+                                cv2.destroyAllWindows()
+                                break
                         win_time = current_time
 
                 # 왼쪽 손의 이긴 횟수를 표시
@@ -135,3 +155,4 @@ while cap.isOpened():
 
     if cv2.waitKey(1) == ord('q'):
         break
+    
