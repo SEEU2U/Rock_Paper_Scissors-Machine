@@ -170,7 +170,7 @@ def main():
     root.geometry("800x600")
 
     label = tk.Label(root, text="Welcome to the Gesture Game", font=("Arial", 24))
-    label.pack(pady=20)
+    label.pack(expand=True)
 
     start_button = tk.Button(root, text="Start", font=("Arial", 18), command=lambda: [root.destroy(), start_game()])
     start_button.pack(pady=20)
