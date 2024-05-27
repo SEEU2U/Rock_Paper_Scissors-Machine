@@ -1,8 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox
+from PIL import Image, ImageTk
 import cv2
 import mediapipe as mp
 import numpy as np
+import os
 import time
 
 max_num_hands = 2
@@ -28,7 +30,7 @@ label = file[:, -1].astype(np.float32)
 knn = cv2.ml.KNearest_create()
 knn.train(angle, cv2.ml.ROW_SAMPLE, label)
 
-# 이긴 횟수를 0으로 초기화시킴
+# 전역 변수 초기화
 leftHand_wins = 0
 rightHand_wins = 0
 
@@ -38,15 +40,21 @@ win_time = time.time()
 # 승리 판정 제한 시간을 3초로 만듦
 win_limit_sec = 3
 
-def start_game():
-    global leftHand_wins, rightHand_wins, win_time
+def start_game(root, canvas, webcam_label, start_button, description_button):
+    global leftHand_wins, rightHand_wins, win_time  # 전역 변수를 선언합니다.
 
     cap = cv2.VideoCapture(0)
 
-    while cap.isOpened():
+    def open_main_window():
+        cap.release()
+        root.destroy()
+        main()
+
+    def show_frame():
+        global leftHand_wins, rightHand_wins, win_time  # 전역 변수를 선언합니다.
         ret, img = cap.read()
         if not ret:
-            continue
+            return
 
         img = cv2.flip(img, 1)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -127,11 +135,13 @@ def start_game():
                                                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 0, 255), thickness=3)
                                     cv2.putText(img, text='Winner Left', org=(int(img.shape[1] / 2), 100),
                                                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 255, 0), thickness=3)
-                                    cv2.imshow('Game', img)
-                                    cv2.waitKey(5000)    # 5초 후 게임을 종료
-                                    cap.release()
-                                    cv2.destroyAllWindows()
-                                    break
+                                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                                    img = Image.fromarray(img)
+                                    imgtk = ImageTk.PhotoImage(image=img)
+                                    webcam_label.imgtk = imgtk
+                                    webcam_label.configure(image=imgtk)
+                                    webcam_label.after(5000, open_main_window)
+                                    return
                             else:
                                 rightHand_wins += 1
                                 if rightHand_wins == 5:
@@ -139,11 +149,13 @@ def start_game():
                                                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 0, 255), thickness=3)
                                     cv2.putText(img, text='Winner Right', org=(int(img.shape[1] / 2), 100),
                                                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 255, 0), thickness=3)
-                                    cv2.imshow('Game', img)
-                                    cv2.waitKey(5000)  # 5초 후 게임을 종료
-                                    cap.release()
-                                    cv2.destroyAllWindows()
-                                    break
+                                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                                    img = Image.fromarray(img)
+                                    imgtk = ImageTk.PhotoImage(image=img)
+                                    webcam_label.imgtk = imgtk
+                                    webcam_label.configure(image=imgtk)
+                                    webcam_label.after(5000, open_main_window)
+                                    return
                             win_time = current_time
 
                     # 왼쪽 손의 이긴 횟수를 표시
@@ -156,24 +168,67 @@ def start_game():
                     cv2.putText(img, text=text, org=(int(img.shape[1] / 2), 100), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                                 fontScale=2, color=(0, 0, 255), thickness=3)
 
-        cv2.imshow('Game', img)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(img)
+        imgtk = ImageTk.PhotoImage(image=img)
+        webcam_label.imgtk = imgtk
+        webcam_label.configure(image=imgtk)
 
-        if cv2.waitKey(1) == ord('q'):
-            break
+        root.after(10, show_frame)
 
-    cap.release()
-    cv2.destroyAllWindows()
+    start_button.destroy()  # START 버튼을 제거
+    description_button.destroy()  # DESCRIPTION 버튼을 제거
+    webcam_label.place(x=0, y=0, width=800, height=600)  # 웹캠 피드를 캔버스를 꽉 채우도록 배치
+    root.after(10, show_frame)
+    main_button = tk.Button(root, text="메뉴", font=("Arial", 18), command=open_main_window)
+    main_button.place(x=720, y=20)
+
+def show_description(canvas, root):
+    canvas.delete("all")  # 현재 캔버스에 그려진 모든 내용을 삭제
+    canvas.create_text(400, 300, text="텍스트", font=("Arial", 24), fill="black")
+
+    def open_main_window():
+        root.destroy()
+        main()
+
+    main_button = tk.Button(root, text="메뉴", font=("Arial", 18), command=open_main_window)
+    main_button.place(x=720, y=20)
 
 def main():
     root = tk.Tk()
-    root.title("Gesture Game")
+    root.title("RPS Game - Rock Paper Scissors")
     root.geometry("800x600")
 
-    label = tk.Label(root, text="Welcome to the Gesture Game", font=("Arial", 24))
-    label.pack(expand=True)
+    # 현재 스크립트의 디렉토리를 기준으로 이미지 경로 설정
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(base_path, "image/1z.jpg")
 
-    start_button = tk.Button(root, text="Start", font=("Arial", 18), command=lambda: [root.destroy(), start_game()])
-    start_button.pack(pady=20)
+    # 배경 이미지 파일 로드
+    background_image = Image.open(image_path)
+    background_image = background_image.resize((800, 600), Image.LANCZOS)
+    background_photo = ImageTk.PhotoImage(background_image)
+
+    # 배경 이미지를 표시할 캔버스 생성
+    canvas = tk.Canvas(root, width=800, height=600)
+    canvas.pack(fill="both", expand=True)
+    canvas.create_image(0, 0, image=background_photo, anchor="nw")
+
+    # 배경 이미지 위에 레이블 및 시작 버튼 추가
+    label = tk.Label(root, text="가위바위보 게임", font=("Arial", 24), bg="lightblue")
+    label_window = canvas.create_window(400, 200, window=label)
+
+    # 웹캠 피드에 대한 레이블 생성
+    webcam_label = tk.Label(root)
+
+    start_button = tk.Button(root, text="게임 시작", font=("Arial", 18), command=lambda: start_game(root, canvas, webcam_label, start_button, description_button))
+    start_button_window = canvas.create_window(400, 300, window=start_button)
+
+    description_button = tk.Button(root, text="게임 설명", font=("Arial", 18), command=lambda: show_description(canvas, root))
+    description_button_window = canvas.create_window(400, 350, window=description_button)
+
+    # 게임 종료 버튼 추가
+    exit_button = tk.Button(root, text="게임 종료", font=("Arial", 18), command=root.quit)
+    exit_button_window = canvas.create_window(400, 400, window=exit_button)
 
     root.mainloop()
 
